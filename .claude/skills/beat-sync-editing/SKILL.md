@@ -92,10 +92,46 @@ performance without a strong downbeat, and heavily swung material. When
 `confidence.band` is not `high`, say so and fall back to manual placement rather
 than delivering cuts that are confidently, rhythmically wrong.
 
-**5. `plan_beat_cuts` needs a project context.** The MCP action requires an open
-Resolve project even though beat detection itself does not. With no project (or
-a dead bridge), call `src.utils.beat_detection` directly through the venv
-Python — measured working, and it is the faster loop while iterating anyway.
+**5. Do NOT call `plan_beat_cuts` through the MCP — it wedges the server.**
+
+This is the worst trap in this file, and it was measured twice.
+
+| Route | Result |
+|---|---|
+| `venv/Scripts/python.exe` calling `edit_engine.plan_beat_cuts` directly | **2.2 s**, 18 cut points |
+| `edit_engine(action='plan_beat_cuts')` through the MCP | **Hung for 1800 s**, then aborted |
+
+Worse than the hang: the server did not recover. The next call — a plain
+`timeline(action='get_current')` that had answered in 125 ms moments earlier —
+also hung for the full 1800 s. The whole server was dead, and only a Claude Code
+restart brought it back.
+
+The function itself is trivial: resolve a path, `detect_beats`, group, snap.
+Nothing loops. The cost is `librosa.load` plus numba-backed beat tracking, and
+running that inside the MCP server's process blocks it completely.
+
+**So: always run beat detection out-of-process.**
+
+```bash
+venv/Scripts/python.exe -c "
+import sys; sys.path.insert(0, r'<repo>')
+from src.utils import edit_engine as ee
+r = ee.plan_beat_cuts(r'<analysis_root>', media_path=r'<audio>',
+                      timeline_fps=59.94, mode='bar', min_shot_seconds=7)
+print(r['cut_frames'])
+"
+```
+
+Take the returned frame numbers and build the timeline with the ordinary
+`media_pool` calls. Those are cheap and do not block.
+
+**6. `plan_beat_cuts` needs an `analysis_root`, not an open project.** The error
+text says "open a Resolve project", but an open project is not enough — measured
+with `Cold Open v04` open and readable, the call still refused. What
+`_project_context` actually wants is a versioning provider or an explicit
+`analysis_root=` pointing at a directory that exists. Pass one; any existing
+directory works, and `.davinci-resolve-mcp-analysis/` is the gitignored
+convention.
 
 ## What "off the beat" actually looks like
 
