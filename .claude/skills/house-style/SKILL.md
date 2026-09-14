@@ -37,25 +37,67 @@ confidently followed is worse than no rule.
 
 <!-- Hold lengths, when to cut early, what "too long" means for this material. -->
 
-_Not yet captured._
+- **When the user gives an explicit duration cap, hit it with a margin — trim
+  hold lengths proportionally across all shots first, don't drop shots from
+  the arc unless shot count itself is the problem.**
+  - Why: asked to compress a 1:42 cut to under 1:00 while keeping the same
+    6-shot story arc; shortening every hold (not cutting shots) preserved the
+    narrative and landed comfortably under the cap (55s) rather than right at
+    the edge.
+  - Trap: duration-change math has to be redone by hand for every shot
+    (source in/out, record position) — always re-verify total duration and
+    zero gaps/overlaps after any timing change, never assume the arithmetic
+    was right.
 
 ## Shot selection
 
 <!-- What earns a place in the cut; what gets dropped even when it's a good shot. -->
 
-_Not yet captured._
+- **A shot earns its place by carrying story/human energy and connecting to
+  the piece's event, not by being visually striking in isolation.** Drop a
+  static or empty "beauty" shot even when it's well composed.
+  - Why: a lotus-monument shot and an empty-walkway "hero" shot both looked
+    good on their own but read as "kurang" (lacking) once cut in, because
+    they were visually disconnected from the crowd/event energy carrying the
+    rest of the piece. Swapping them for busier, event-connected footage
+    (a group kneeling near a truck, a dense boulevard) fixed the note
+    immediately — no grading or pacing change needed.
+  - Trap: a still frame or contact sheet cannot tell you this — a shot can
+    look great as an image and still be the weak link in motion, because
+    what's missing (movement, people, story) only shows up watching it in
+    context with its neighbors.
 
 ## Cut points
 
 <!-- Cut on motion vs on rest, handles, how much air before and after a beat. -->
 
-_Not yet captured._
+- **Never declare a cut, grade, or color change "done" from an API success
+  response alone — render a preview and pull actual frames before reporting
+  a result as final.**
+  - Why: a write call (e.g. `SetCDL`) can return `success:true` on a payload
+    that silently did nothing (wrong key casing produced a no-op identity
+    grade); a rendered frame is the only thing that can't lie about what's
+    actually in the file.
+  - Trap: the obvious verification path (Resolve's still-export folder under
+    `~/Documents`) can be silently blocked by Windows Controlled Folder
+    Access, failing with a misleading "file not found" rather than a
+    permissions error. When that happens, render to a project-owned scratch
+    folder instead and pull frames with ffmpeg — don't give up on
+    verification just because the default path is blocked.
 
 ## Structure and openings
 
 <!-- How a piece starts, what the first frames have to do, how it lands. -->
 
-_Not yet captured._
+- **A cold-open/highlight arc: wide establishing shot → 2-3 shots building
+  energy/movement → a closer with real narrative weight, not just visual
+  novelty.**
+  - Why: this shape read well once the closer carried the same event-energy
+    as the rest of the piece, instead of being a quiet "pretty" shot tacked
+    on at the end for visual variety.
+  - Trap: a visually unique "hero" shot is not automatically the right
+    closer — if it's disconnected from the piece's energy it reads as a lull
+    right before the cut ends, not a landing.
 
 ## Rejected by default
 
@@ -73,7 +115,21 @@ thrown away:
 
 <!-- Aspect ratios, timeline naming, versioning, where renders go. -->
 
-_Not yet captured._
+- **Cross-dissolve transitions cannot be added via script when the project's
+  Resolve build was chosen to keep bridge scripting alive (e.g. 21.0.4.5) —
+  `TimelineItem.AddTransition` needs 21.1+, and 21.1 free removes scripting
+  entirely. Hand transitions off to the user for manual placement in the Edit
+  page rather than retrying an automated route.**
+  - Why: the one automated workaround (author an offline `.drt` via
+    `drt.assemble`, which needs `media_pool.capture_media_template` once per
+    source file) switches the *live* Resolve project mid-session and can hang
+    on an unclosable modal — this actually happened once, and took the whole
+    bridge connection down until the user manually reopened the project and
+    restarted the bridge script.
+  - Trap: retrying an automated transition route feels more thorough than
+    telling the user to do it by hand, but the manual step costs seconds and
+    the automated one already caused a real outage — don't re-attempt it
+    without the user explicitly asking again with the risk spelled out.
 
 ---
 

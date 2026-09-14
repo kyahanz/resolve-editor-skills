@@ -128,6 +128,12 @@ davinci-resolve-mcp-analysis/
 /*.mp4
 /*.wav
 
+# Preview renders written while verifying a cut or grade. The root-anchored
+# rules above do not reach a subdirectory, and these are GB-scale: one 51-second
+# 1080x1920 preview measured 1.1 GB, and four of them reached 4 GB in a single
+# session before anyone looked. Render previews here, never into the repo root.
+scratch-renders/
+
 # Local scratch / personal tooling attached to this project.
 # Holds design docs, calibration references, release-notes drafts, the screenshot
 # capture script, and one-off repro scripts. Never shipped. See local/README.md.
