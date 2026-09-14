@@ -39,7 +39,38 @@ whisper "<clip>" --model small --output_format srt --output_dir "<out_dir>"
 
 Model choice is a speed/accuracy trade: `base` for a rough index, `small` for
 usable captions, `medium`+ when names and jargon matter. Models download on
-first use — say so before starting, the first run is not instant.
+first use — say so before starting, the first run is not instant (`tiny` is
+72 MB; larger models are substantially bigger).
+
+**Verified on this machine** (Python 3.12, `openai-whisper-20250625`,
+`torch-2.14.0`): install succeeds, the CLI resolves, ffmpeg decode works, and a
+12-second clip produced a well-formed SRT. On instrumental music with no speech
+it emitted a single `.` rather than hallucinating lyrics — near-empty output on
+a silent or musical clip is correct behaviour, not a failure.
+
+### The stale-PATH trap (bites twice)
+
+Two separate processes need to find these binaries, and they fail differently:
+
+- **A shell started before the install** keeps its old PATH. `pip` even warns
+  that `whisper.exe` "is not on PATH" while the *persisted* user PATH already
+  contains it — the warning reads the process environment, not the registry.
+  Check with `[System.Environment]::GetEnvironmentVariable("Path","User")`
+  before concluding anything is missing.
+- **The MCP server process** is worse: it caches its PATH at launch, so
+  `media_analysis(action='capabilities')` keeps reporting
+  `whisper_cli: false`, `ffmpeg: false`, `ffprobe: false` long after the tools
+  are installed and working. **Measured immediately after a successful install
+  and a successful whisper run.**
+
+  The server needs a **restart** to see them. Until then, any MCP action routed
+  through its internal ffmpeg/whisper detection (frame capture with `max_width`,
+  transcription, scene detection) will refuse with an install prompt for
+  software that is already installed.
+
+So: verify tools by running them directly, not by asking `capabilities()`. A
+`false` there means "this server has not restarted since the install", which is
+a different problem from "not installed" and has a different fix.
 
 **Check the clip has audio before transcribing.** Drone footage frequently has
 zero audio channels (measured on this project: every DJI Mini clip reported
