@@ -49,6 +49,41 @@ confidently followed is worse than no rule.
     zero gaps/overlaps after any timing change, never assume the arithmetic
     was right.
 
+- **A beat-synced montage needs a rhythm peak, not just uniform tempo-matched
+  density — build in at least one shot that holds longer than its grid at the
+  piece's visual high point, so the cut has a felt arc instead of one
+  unbroken cut rate.** Passing the beat-grid math (cuts land within a frame of
+  every downbeat) proves the edit is *synced*; it does not prove it is
+  *satisfying* to watch — those are different checks and the first does not
+  clear the second.
+  - Why: delivered a 29s beat-synced short-form cut that measured
+    frame-accurate against the downbeats and still read as "kurang"
+    (flat/underwhelming) — cutting at a uniformly fast rate for the entire
+    back half never let any single moment land before the next cut arrived.
+  - Trap: `beat-sync-editing`'s accelerating-grid structure (slower before the
+    phrase boundary, faster after) creates energy on paper, but "faster"
+    still means *every* shot in that section is equally quick — it is not
+    itself a rhythm break. A rhythm break is one shot in the fast section
+    deliberately held past its grid length; the grid gives permission for
+    where cuts *can* land, not a mandate that they all must.
+
+- **Check footage variety before promising cut density — if the source is a
+  small number of clips of the same single subject, say so before building,
+  not after the user notices the cut feels thin.** A handful of clips can
+  supply a few genuinely distinct shots of one subject, not ten; committing to
+  a 10-shot fast-cut structure on 3 source clips of one statue guarantees the
+  piece runs out of real variety before it runs out of shots.
+  - Why: the GWK short-form cut only had 3 source clips for all 10 shots;
+    after fixing one batch of literally-duplicate framing (see Shot
+    selection), the piece was still capped by how much genuinely different
+    footage of one monument exists — no amount of re-cutting fixes a supply
+    problem.
+  - Trap: "different timestamp in the same clip" reads as a distinct shot in
+    the edit's own metadata but often is not a distinct shot on screen (see
+    `beat-sync-editing`'s Clip A orbit case) — evaluate variety by what's
+    visually different (subject, framing, scale, distance), not by how many
+    source files or timestamps were touched.
+
 ## Shot selection
 
 <!-- What earns a place in the cut; what gets dropped even when it's a good shot. -->

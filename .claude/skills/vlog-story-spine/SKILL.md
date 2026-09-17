@@ -108,4 +108,17 @@ salam"), write the rule down here with:
 
 ### Captured rules
 
-_Not yet captured — no long-form piece has been cut on this project yet._
+- **For long-duration material (daily vlog, semi-vlog, anything driven by a
+  presenter or a day's events rather than a music track), prioritize clear
+  delivery over cut density — do not apply short-form cut rates to it.** Hold
+  shots long enough that what's being shown or said is actually followable;
+  when in doubt, cut less, not more.
+  - Why: explicitly contrasted this against the beat-synced short-form work —
+    the aggressive, tempo-locked cutting that suits a 29s montage is the wrong
+    instinct for long-form/vlog material, where the job is communicating
+    clearly across minutes, not keeping a tempo.
+  - Trap: right after cutting a punchy short-form piece, the reflex is to
+    reuse that cut rate everywhere since it's the most recent muscle memory —
+    long-form/vlog needs the opposite discipline (see `short-form-structure`
+    for the montage side of this project's work, and keep the two instincts
+    separate).

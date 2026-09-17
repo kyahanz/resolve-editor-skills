@@ -71,6 +71,36 @@ rather than merely synchronised. But 16 s is a long time to hold one shot, so
 the usual shape is: **cut on 4-bar marks, and put your strongest shot changes on
 the phrase boundaries.** Structure follows the music's own structure.
 
+## The grid is where a cut is allowed to land, not a mandate to cut there
+
+A grid answers "when would a cut read as deliberate," not "cut here." Treating
+every grid point as a cut to take produces a piece that is frame-accurate and
+still reads as flat — measured on a real delivery: a 29 s cut with cuts
+verified within ~14 ms of every downbeat still came back from the client as
+"kurang" (underwhelming), because the back half took *every* 1-bar mark
+mechanically, so nothing in it ever held long enough to register before the
+next cut arrived. Passing the sync check proves the edit is locked to the
+music; it says nothing about whether it is satisfying to watch, and treating
+the grid as compulsory is what erases the difference.
+
+**Before finalizing shot count and durations, pick at least one cut to skip.**
+Take the grid as the candidate list of legal cut points, then deliberately
+choose one shot — at the piece's strongest visual moment, not necessarily the
+first or the last — to run through the next grid point instead of cutting on
+it (e.g. hold a 1-bar-grid shot for 2 bars). This is what turns a mechanically
+correct cut into one with a felt peak. It costs one shot in the count, never a
+frame of sync accuracy elsewhere.
+
+- Why this belongs in the grid step, not the color/pacing pass afterward:
+  shot durations and count are decided here; adding a deliberate hold after
+  the timeline is built means re-doing every downstream record-frame
+  position. Decide the hold before locking in/out points.
+- Trap: "the grid gives me permission to cut every N bars" quietly becomes
+  "the grid requires a cut every N bars" the moment cut points get generated
+  programmatically (`plan_beat_cuts` returns every grid point, not a curated
+  subset) — the skip has to be a deliberate manual step against that output,
+  it will not happen on its own.
+
 ## The traps, in the order they bite
 
 **1. `timeline_fps` defaults to 24.0.** `edit_engine(action='plan_beat_cuts')`
@@ -161,8 +191,13 @@ invisible until measured.
 4. Build shot durations from the gaps between those frames, not from round
    seconds.
 5. Put the strongest shot changes on phrase boundaries.
-6. Verify: render, then measure the actual cut positions against the downbeats
-   the way the table above does. "It looks like it lines up" is not verification.
+6. **Pick one grid point to skip** — the shot at the piece's visual peak runs
+   long through it instead of cutting on it. Skip this step only for a
+   piece too short to have a peak distinct from its other shots.
+7. Verify: render, then measure the actual cut positions against the downbeats
+   the way the table above does. "It looks like it lines up" is not
+   verification, and it does not check for step 6 either — that one only
+   comes back from actually watching the render.
 
 ## When NOT to use this
 

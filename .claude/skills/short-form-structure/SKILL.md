@@ -67,6 +67,18 @@ back half lifts without the track doing anything different. Verified: the nine
 real cuts landed a mean of **3.3 ms** from their downbeats — a fifth of a frame
 at 59.94 fps.
 
+That sync accuracy is necessary and not sufficient. A real delivery built
+exactly on this shape — cuts within ~14 ms of every downbeat — still came back
+"kurang" (flat), because "the back half is faster" was implemented as *every*
+1-bar shot in it being equally quick, with nothing held long enough to
+register before the next cut. The fast half of the curve is still a grid of
+*legal* cut points, not a requirement to take all of them — reserve one shot
+in the fast half (the strongest one, not necessarily first or last) to run
+through its grid mark instead of cutting on it. See `beat-sync-editing`'s "The
+grid is where a cut is allowed to land, not a mandate to cut there" for the
+mechanics; the rate-doubling shape and the reserved hold are not in tension —
+the doubling sets the ceiling, the hold is one deliberate exception to it.
+
 Reverse the shape (fast → slow) only for a deliberate wind-down ending.
 
 ## Density decides whether hard cuts feel right
