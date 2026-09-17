@@ -133,6 +133,26 @@ generator `TimelineItem.GetProperty()` keys for the selected item scope.
 `set_title_text` and `bulk_set_title_text` use explicit or scanned keys when a
 Resolve build accepts `SetProperty()` writes for title text payloads.
 
+### Bulk item operations — prefer these over a per-item loop
+
+`timeline(action="bulk_set_item_properties", params={"ops": [...]})` sets
+transform/crop/composite/audio/clip_color/enabled on many items in **one**
+call: each `ops` entry is `{"timeline_item_id": id, "transform": {...}, ...}`
+(or any of the other copyable-state groups above as a key). One call, one
+result list — instead of one `timeline_item(action="set_transform")` round
+trip per clip.
+
+`timeline(action="apply_look_to_items", params={"target_ids": [...], "cdl": {...}})`
+applies the same CDL to many video items in one call, instead of looping
+`timeline_item_color(action="safe_set_cdl")` per clip.
+
+Looping the single-item tools works, but every response carries the full
+verbose envelope (`operation_id`, `security`, `lifecycle.provenance_trace`,
+`readback_verification`, etc.), so N per-clip calls cost roughly N times that
+overhead for no benefit when the same value is going on every item. Default to
+the bulk action whenever more than ~2 items get the same transform or grade;
+loop only when per-clip values genuinely differ.
+
 ## Partial Support
 
 The probe classifies a feature as partially supported when Resolve exposes a

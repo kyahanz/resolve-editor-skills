@@ -91,32 +91,67 @@ Empty output means no audio track at all.
 in the media pool as a clip of type **`Subtitle`**. Confirmed by readback in
 `project_summary` → `by_type: {Subtitle: 1}`.
 
-## Step 3 — Placing it is a UI step, not an API one
+## Step 3 — Placing it: the LIVE route is broken, the OFFLINE route is not
 
-**Measured, same build:** appending that Subtitle clip with
-`media_pool(action='append_to_timeline', clip_ids=[...])` **fails**
-(`execution.success: false`, `count: 0`) — and took the in-Resolve bridge down
+**The live append fails, and costs a bridge restart.** Measured, same build:
+`media_pool(action='append_to_timeline', clip_ids=[<subtitle clip>])` returns
+`execution.success: false`, `count: 0` — and took the in-Resolve bridge down
 with it (`connection forcibly closed`), requiring a manual restart from
-Workspace ▸ Scripts.
+Workspace ▸ Scripts. Do not retry it; it is not a transient failure.
 
-So:
+`timeline(action='add_track', track_type='subtitle')` does work, so the track
+can be created live. Only the *placement* is blocked.
 
-- Add the subtitle track by API if needed —
-  `timeline(action='add_track', track_type='subtitle')` works.
-- **Then hand off:** the user drags the Subtitle clip from the Media Pool onto
-  the subtitle track. Do not retry the append; it is not a transient failure and
-  it costs a bridge restart each time.
+**The offline route places cues without touching the bridge at all.** The
+advanced (Node) server authors subtitle items straight into a `.drp`/`.drt` —
+`drp-format/place-subtitles`, reached through the `drp` / `drt` actions. A
+subtitle is the simplest item in the schema (a `Sm2TiGenerator` with
+`PrettyType: Subtitle` and the cue text in `Name`, on a `Type 2` track), and
+the module's shape was harvested from a real Studio project with an SRT
+appended by the API and re-exported — so this writes what Resolve itself
+writes. It takes `{startFrame, durationFrames, text}` per cue, with
+`startFrame` **timeline-absolute** (origin 86400 on the bundled templates,
+108000 on a 30 fps hour-start timeline — read the real start frame, do not
+assume). Overlapping cues are refused rather than silently merged: one
+subtitle track cannot hold two at once.
 
-## Step 4 — Style and position
+So the automated path is: SRT → cue list (convert SRT timecodes to timeline-
+absolute frames at the real timeline fps) → `place-subtitles` into the project
+file → reopen. Nothing is dragged by hand.
 
-Caption **styling** (font, size, position) is not reachable through the
-scripting API. The offline route is
-`project_read`/`project_db(action='set_subtitle_style')` on the advanced server,
-which patches the project database directly — whole-track only, and it requires
-the project **closed** and Resolve fully quit and relaunched afterwards. Treat
-that as a deliberate maintenance operation, not a mid-session tweak.
+## Step 4 — Style and position (also offline, also automatable)
 
-For anything lighter, styling is the user's UI pass.
+Caption **styling is not reachable through the scripting API** — subtitle
+TimelineItems expose only the 21 transform/composite properties, and
+`GetSetting()` returns null for every subtitle-style key.
+
+The offline route handles it:
+`project_read`/`project_db(action='list_subtitle_styles' | 'set_subtitle_style')`
+on the advanced server, which patches the style Resolve keeps on the subtitle
+track itself (font family / size / weight / italic, plus normalised position
+`[x, y]` with origin top-left). It is **whole-track, not per-caption**.
+
+## The operational catch that applies to BOTH offline steps
+
+The project must be **CLOSED** and Resolve fully quit, then relaunched after
+the patch. That is the entire cost of the automated route — not a manual
+drag-and-drop pass, just a close/patch/reopen cycle.
+
+Consequences worth stating to the user before starting:
+
+- It cannot run while they are working in that project. Schedule it, do not
+  surprise them mid-session.
+- Anything unsaved in the open project is the user's to save first. Ask.
+- After relaunch, **verify by reading the placed cues back** — subtitle text is
+  API-visible (the payload is the item `Name`), so readback is meaningful here,
+  unlike the Fusion comp-cache cases. Do not report captions as placed on the
+  strength of the patch returning success.
+
+**Not yet exercised on this project** (as of 2026-09-17): the offline placement
+path is documented and its shape is harvested from live ground truth, but no
+piece here has had speech to caption yet, so it has not been run end to end in
+this repo. Run it and verify the readback the first time rather than promising
+the outcome — then replace this paragraph with what actually happened.
 
 ## Step 5 — Where captions may sit
 
@@ -145,6 +180,12 @@ backfill. They say so rather than returning an empty plan.
 1. Check edition — free means local Whisper, never the Studio call
 2. Check the clip actually has audio
 3. `whisper … --output_format srt`
-4. `import_media` the SRT (works, lands as type `Subtitle`)
-5. `add_track` subtitle, then **hand the drag-to-timeline to the user**
-6. Styling and position: UI, or the offline DB route with Resolve closed
+4. Convert SRT cues to timeline-absolute frames at the real timeline fps
+5. Close the project + quit Resolve, then patch offline:
+   `place-subtitles` for the cues, `set_subtitle_style` for font/position
+6. Relaunch, reopen, and **read the cues back** before reporting it done
+
+Live-only fallback if the project cannot be closed: `import_media` the SRT
+(works, lands as type `Subtitle`) + `add_track` subtitle, then the user drags
+it onto the track. Never `append_to_timeline` a subtitle clip — that is the
+call that kills the bridge.
