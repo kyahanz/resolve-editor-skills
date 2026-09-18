@@ -114,6 +114,7 @@ docs/superpowers/specs/
 
 # Resolve MCP media analysis artifacts
 .davinci-resolve-mcp-analysis/
+.analysis-ragunan/
 davinci-resolve-mcp-analysis/
 
 # Export artifacts at the repo root. Backstop only: tests must not write into

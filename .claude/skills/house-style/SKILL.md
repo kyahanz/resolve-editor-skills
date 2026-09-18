@@ -102,6 +102,31 @@ confidently followed is worse than no rule.
     what's missing (movement, people, story) only shows up watching it in
     context with its neighbors.
 
+- **Two shots of the same subject in the same framing read as a repeat even
+  when they come from different timestamps or different source clips — before
+  locking a sequence, list its shots by (subject + framing) and check for
+  collisions, not just by clip name.**
+  - Why: a Ragunan/Blok M cut shipped with two "civet on a girl's shoulder"
+    shots (same person, same framing, ~90s apart); the user spotted the
+    duplication immediately on first watch even though the two came from
+    source timestamps 0:59 and 3:15 of the same clip.
+  - Trap: the build plan lists shots by clip filename and in-point, so two
+    near-identical shots look distinct in the plan and in every gapless/
+    duration check. Only a per-shot frame render exposes it — and only if you
+    compare shots against each other rather than judging each one alone.
+
+- **Do not discard a long, mostly-empty source clip on the strength of a
+  contact sheet — scan it densely (2-3s steps) before ruling it out.** A
+  sparse clip's few good seconds fall between contact-sheet samples far more
+  often than a busy clip's do.
+  - Why: a 2:50 locked-off plaza clip was judged "90% empty, not worth using"
+    from a 12-tile contact sheet and dropped. It actually contained the one
+    shot the user most wanted — the group cycling past camera waving — in a
+    ~4s window that no tile landed on. The user had to ask for it by name.
+  - Trap: the emptier the clip, the more confident the "nothing here" read
+    from a contact sheet feels, and the more wrong it is — sampling density
+    should go UP for sparse clips, not down.
+
 ## Cut points
 
 <!-- Cut on motion vs on rest, handles, how much air before and after a beat. -->
