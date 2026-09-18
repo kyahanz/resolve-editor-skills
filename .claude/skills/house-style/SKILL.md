@@ -102,18 +102,24 @@ confidently followed is worse than no rule.
     what's missing (movement, people, story) only shows up watching it in
     context with its neighbors.
 
-- **Two shots of the same subject in the same framing read as a repeat even
-  when they come from different timestamps or different source clips — before
-  locking a sequence, list its shots by (subject + framing) and check for
-  collisions, not just by clip name.**
-  - Why: a Ragunan/Blok M cut shipped with two "civet on a girl's shoulder"
-    shots (same person, same framing, ~90s apart); the user spotted the
-    duplication immediately on first watch even though the two came from
-    source timestamps 0:59 and 3:15 of the same clip.
-  - Trap: the build plan lists shots by clip filename and in-point, so two
-    near-identical shots look distinct in the plan and in every gapless/
-    duration check. Only a per-shot frame render exposes it — and only if you
-    compare shots against each other rather than judging each one alone.
+- **Duplicate framings concentrate in whichever source clips the cut reuses
+  most — before locking a sequence, group its shots by source clip, render the
+  members of every clip used 3+ times side by side in one sheet, and look.**
+  - Why: the Ragunan/Blok M cut shipped with three near-duplicate pairs (two
+    civet-on-pavement closeups, one reaction shot twice, one deer-behind-fence
+    framing twice). All three came from the three clips the cut leaned on
+    hardest — one clip supplied 7 of the 47 shots. Grouping by source clip put
+    every pair on the same row, where they were obvious in one glance.
+  - Two weaker checks were tried first and BOTH missed all three pairs:
+    - Listing shots by (subject + framing) from the build plan. The plan
+      distinguishes shots by filename and in-point, so near-identical shots
+      read as distinct, and every gapless/duration check passes.
+    - Automated similarity on one mid-frame per shot. The true pairs scored
+      0.20-0.33 structural similarity while unrelated shots that merely shared
+      a composition scored 0.48-0.66 — the ranking was worse than useless.
+      A single frame does not represent a moving shot; do not trust this.
+  - So: the grouped visual sheet is the check that works. The user watching it
+    once will out-detect any metric, so the goal is to look before they do.
 
 - **Do not discard a long, mostly-empty source clip on the strength of a
   contact sheet — scan it densely (2-3s steps) before ruling it out.** A
