@@ -137,6 +137,71 @@ confidently followed is worse than no rule.
 
 <!-- Cut on motion vs on rest, handles, how much air before and after a beat. -->
 
+- **"Transisinya patah-patah / kurang smooth" on a hard-cut assembly usually
+  means a LUMINANCE jump between neighbouring shots, not a missing dissolve —
+  measure mean luma of every candidate shot window and order the sequence as a
+  monotonic ramp before reaching for transitions.**
+  - Why: a hazy-reservoir vertical cut was called "patah-patah dan kurang
+    smooth". Measuring mean luma of each shot's in-point window exposed the
+    real cause: the order ran 114 → 38 → 121, a near-black top-down shot
+    sandwiched between two bright ones. Re-ordering the same nine shots into a
+    dark→bright ramp (38 → 59 → 65 → 70 → 114 → 121 → 126 → 136 → 165) fixed
+    the complaint with no transitions added, and read as a natural light arc.
+  - Measure it, don't eyeball it, with one ffmpeg call per window:
+    `ffmpeg -ss <t> -t 1 -i <clip> -vf "scale=160:-2,format=gray" -f rawvideo -`
+    piped to a mean. Contact sheets are gamma-mangled and tiny; they will not
+    rank shots reliably.
+  - Trap: the instinct on this note is to add cross-dissolves, which on a 21.0.x
+    build is a manual hand-off and does not fix the underlying flash anyway. A
+    dissolve smooths a luma jump by hiding it; ordering removes it.
+
+- **"Kurang sinkron" on a cut that already measures frame-accurate against the
+  beat grid means the cuts are on the METRONOME but not on the music's ACTUAL
+  events — plot the RMS energy curve and cut on where the energy changes, not
+  on the nearest inferred downbeat.**
+  - Why: a 4-shot cut measured 0.3–7.8 ms off every downbeat and still came
+    back as "transisinya sesuain sama beat music". The track's real event — a
+    2.4x energy jump, its only drop — sat at 5.43–5.52 s, while the nearest
+    inferred downbeat was 4.923 s. The first cut was therefore **506 ms early**,
+    almost a full beat (604 ms) at 99 BPM: the picture changed before the music
+    did. Moving that one cut to 5.522 s fixed it; nothing else changed.
+  - How to find it: `librosa.feature.rms` at hop 512 for a per-second energy
+    bar chart to spot the section change, then re-run at hop 128 over the
+    suspect 1–2 s window to get the exact frame the energy steps. Cross-check
+    against `librosa.onset.onset_strength` peaks for the accent list.
+  - Trap: `detect_beats` reports high confidence for the *spacing* of the pulse,
+    and that is a true statement about the metronome — it says nothing about
+    whether a given downbeat carries any musical weight. A uniform grid over a
+    track that has one drop will happily offer nine equally-valid-looking cut
+    points, only one of which the listener is actually waiting for.
+
+- **A supplied music track sets the piece's LENGTH, not just its cut points —
+  read its duration first and re-plan the shot count before touching the
+  timeline.**
+  - Why: a locked 52 s cut had to become 23.5 s the moment the client's track
+    arrived; keeping the old structure and "syncing" it would have meant
+    dropping half the shots anyway, but discovered late instead of planned.
+  - Trap: the beat grid is the visible part of the job, so it is easy to jump
+    straight to `detect_beats` and only notice the runtime mismatch after the
+    cut points are computed.
+
+- **`clip_infos.end_frame` in `media_pool.create_timeline_from_clips` is
+  EXCLUSIVE. Pass `start_frame + duration`, never `start + duration - 1` — the
+  off-by-one leaves a 1-frame gap at the tail of every shot, which renders as a
+  one-frame BLACK FLASH at every cut.**
+  - Why: a 9-shot cut came back as "kaya ada kedut-kedut" (twitchy). Per-frame
+    luma on the render showed luma 0.0 at frames 151, 294, 437, 582, 726, 869,
+    1013, 1300 — the last frame of all eight shots. The defect had been present
+    since v1 and survived three re-cuts and two frame-verification passes.
+  - Trap: `timeline.get_items_in_track` reads back `start:216000 end:216239
+    duration:239` for a 240-frame slot. That LOOKS contiguous and it is easy to
+    call it "gapless" — the tell is `duration` being one less than the spacing
+    between consecutive `start` values. Compare those two numbers explicitly.
+  - The check that actually catches it: decode the render to grayscale and scan
+    for frames with mean luma < 5. Reading one frame per shot never finds it,
+    because the black frame is a single frame at the boundary and every sampled
+    frame sits inside the shot.
+
 - **Never declare a cut, grade, or color change "done" from an API success
   response alone — render a preview and pull actual frames before reporting
   a result as final.**
@@ -180,6 +245,89 @@ thrown away:
 ## Delivery conventions
 
 <!-- Aspect ratios, timeline naming, versioning, where renders go. -->
+
+- **After the user adds nodes by hand, the grade you previously set is STILL on
+  the old node — re-setting it on the new node applies it TWICE. Explicitly
+  neutralise every node you are not using.**
+  - Why: a CDL set on NodeIndex 1 survived the user inserting two nodes (it
+    became node 1 of 3). Setting the same CDL on node 3 doubled a 1.55 slope
+    into ~2.4: mid grey measured 1.0 (blown) where the intended value was 0.67.
+    Every API call returned success; node counts and LUT readback all looked
+    right.
+  - Neutral CDL is `Slope "1 1 1" / Offset "0 0 0" / Power "1 1 1" /
+    Saturation "1"` — send it to each unused node index.
+
+- **Verify a grade WITHOUT rendering: `safe_export_lut` the item, then compare
+  the cube numerically against the transform you intended.** This is the check
+  to use when the user has asked you not to export, and it is strictly sharper
+  than looking at a frame.
+  - Export (Color page only — it returns a bare False elsewhere), read the
+    `.cube`, sample probe colours, and compare against camera-LUT-then-CDL
+    computed by hand. A correct grade matches to ~0.0004; the doubled grade
+    above showed 0.36 at mid grey, which is what exposed it.
+  - Also check mean deviation from identity: 0 means the grade is a silent
+    no-op. Differing values per clip prove per-clip trims actually landed.
+  - Validate your own cube sampler against `ffmpeg lut3d` on a few solid
+    colours before trusting a mismatch — nearest-neighbour sampling differs
+    from ffmpeg's trilinear by ~0.01-0.03, and anything larger is a real defect,
+    not a sampling artifact.
+
+- **`timeline_item.set_audio` cannot set Volume on 21.0.x: it returns
+  `{"success": true, "Volume": false}`.** The outer success is the CALL, the
+  inner per-property flag is the WRITE. Read the inner flag; an audio level
+  change has to be handed to the user.
+
+- **There is no AddNode in Resolve's scripting API on any build — a requested
+  "3 serial nodes" layout cannot be scripted. Use a COLOR GROUP instead: the
+  group's Pre-Clip graph, the clip graph, and the group's Post-Clip graph are
+  three independently addressable stages in guaranteed order.**
+  - `graph grade_capabilities` → `graph_methods` lists only Get/SetLUT,
+    node cache, node enabled, ApplyGradeFromDRX, ApplyArriCdlLut,
+    ResetAllGrades. A fresh clip has exactly 1 node and stays that way.
+  - Working layout for a log-normalise + look job:
+    `project_settings.add_color_group` → `timeline_item_color.assign_color_group`
+    (NOT `assign_to_color_group`, which is not an action) per item →
+    `graph.set_lut(source="color_group_pre", group_name=...)` for the camera LUT
+    → `timeline_item_color.safe_set_cdl` per item for the look. The group Pre
+    graph runs before the clip graph, so the LUT is guaranteed to land before
+    the CDL — which matters, because inside a SINGLE node Resolve applies the
+    node LUT after the primaries by default, silently inverting the intent.
+  - `safe_set_cdl` wants ONE `cdl` dict with capitalised keys and
+    space-separated string triples: `{"NodeIndex":"1","Slope":"1.05 1.0 0.96",
+    "Offset":"...","Power":"...","Saturation":"1.12"}`. Flat `slope=[...]`
+    kwargs are refused outright, which is the good case — see the CDL casing
+    no-op trap above for the bad one.
+  - The only route to a real multi-node graph is `ApplyGradeFromDRX`, which
+    REPLACES the graph — so it needs a 3-node .drx from somewhere, i.e. the user
+    building one clip by hand first. Offer that, do not pretend to script it.
+
+- **On a build without `TimelineItem.SetSpeed` (pre-21.1), speed changes are
+  still reachable: set the media pool clip's `FPS` clip property to a fraction
+  of the timeline rate, then let the source range set the item length.**
+  `media_pool_item.set_clip_property(clip_id, "FPS", "29.97")` on a 59.94 clip
+  makes every source frame occupy two timeline frames — a true 50% speed, no
+  `SetSpeed` and no derivative media. Resolve keeps the clip's frame NUMBERING
+  unchanged and only restates its duration, so source in/out stay in the
+  original frame space; ask for N source frames and the item lands at
+  N x (timeline_fps / clip_fps) timeline frames.
+  - Pair it with `timeline_item.set_retime(process=3, motion_estimation=2)`
+    (optical flow), which IS available pre-21.1 — `get_retime`/`set_retime`
+    carry the retime QUALITY and are a different surface from `set_speed`.
+    Without it the slow shot is frame-doubled and visibly stutters.
+  - Verify from the render, not the API: per-frame mean-absolute-difference
+    across the slowed shot should halve against the same shot at 100%, and the
+    count of near-zero diffs (duplicate frames) must be ZERO. Measured 0.248 ->
+    0.124 with 0/331 duplicates, against an unchanged 0.572 on a 100% control
+    shot in the same render.
+  - Limits, state them: it is UNIFORM per clip, not a ramp, so the speed change
+    lands as a step — put that step on a musical accent and it reads as
+    deliberate. The FPS attribute is project-wide for that pool item, so a clip
+    used more than once cannot have two different speeds this way. Pick a
+    fraction that divides the slot cleanly (50% needs an even frame count) or
+    the shot boundary drifts a frame.
+  - Keyframes are NOT a fallback on these builds — `get_keyframes` fails with
+    "has no attribute 'GetKeyframeCount'", so scripted animated push-ins are
+    out too.
 
 - **Cross-dissolve transitions cannot be added via script when the project's
   Resolve build was chosen to keep bridge scripting alive (e.g. 21.0.4.5) —
